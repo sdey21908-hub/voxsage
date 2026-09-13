@@ -1,24 +1,16 @@
 import OpenAI from 'openai';
 
 const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: 'https://api.groq.com/openai/v1',
 });
 
-/**
- * Sends a transcript to the LLM and asks it to return a summary
- * plus a list of action items, as structured JSON.
- *
- * Why a service function and not inline in the route?
- * Routes should stay thin — they handle HTTP concerns (req/res).
- * Services hold the actual logic, so they're testable and reusable
- * without needing to fake an HTTP request.
- */
 export async function summarizeTranscript(transcriptText) {
   const start = Date.now();
 
   try {
     const response = await client.chat.completions.create({
-      model: 'gpt-4o-mini', // cheap + fast, good enough for summarization
+      model: 'openai/gpt-oss-20b',
       messages: [
         {
           role: 'system',
@@ -30,7 +22,7 @@ export async function summarizeTranscript(transcriptText) {
           content: transcriptText,
         },
       ],
-      temperature: 0.2, // low temperature — we want consistent, factual summaries, not creative ones
+      temperature: 0.2,
     });
 
     const durationMs = Date.now() - start;
@@ -40,9 +32,6 @@ export async function summarizeTranscript(transcriptText) {
     try {
       parsed = JSON.parse(raw);
     } catch (parseErr) {
-      // The LLM didn't return valid JSON. This WILL happen sometimes in production —
-      // handling it gracefully instead of crashing is exactly the kind of thing
-      // the JD means by "production-ready, not just a happy-case demo."
       console.error('LLM returned non-JSON output:', raw);
       throw new Error('LLM_INVALID_RESPONSE');
     }
@@ -52,15 +41,13 @@ export async function summarizeTranscript(transcriptText) {
       actionItems: parsed.action_items,
       meta: {
         durationMs,
-        model: 'gpt-4o-mini',
+        model: 'openai/gpt-oss-20b',
       },
     };
   } catch (err) {
     const durationMs = Date.now() - start;
     console.error(`LLM call failed after ${durationMs}ms:`, err.message);
 
-    // Re-throw with a clearer error so the route layer can decide
-    // what HTTP status to send back — the service shouldn't know about HTTP.
     if (err.message === 'LLM_INVALID_RESPONSE') {
       throw err;
     }
