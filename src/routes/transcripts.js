@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { summarizeTranscript } from '../services/llmService.js';
+import { saveSummary } from '../services/db.js';
 
 const router = Router();
 
@@ -20,9 +21,9 @@ router.post('/summarize', async (req, res) => {
     return res.status(400).json({ error: 'Transcript too long (max 20000 chars)' });
   }
 
+  let result;
   try {
-    const result = await summarizeTranscript(text);
-    return res.status(200).json(result);
+    result = await summarizeTranscript(text);
   } catch (err) {
     // Map service-layer errors to HTTP status codes here, in the route,
     // not in the service.
@@ -30,6 +31,25 @@ router.post('/summarize', async (req, res) => {
       return res.status(502).json({ error: 'AI service returned an unexpected response' });
     }
     return res.status(503).json({ error: 'AI service unavailable, please try again' });
+  }
+
+  // LLM succeeded — now try to save it. This is a separate try/catch
+  // because a database failure is a different kind of problem than
+  // an LLM failure, and deserves a different status code.
+  try {
+    const saved = await saveSummary({
+      transcriptText: text,
+      summary: result.summary,
+      actionItems: result.actionItems,
+    });
+    return res.status(200).json({
+      id: saved.id,
+      createdAt: saved.created_at,
+      ...result,
+    });
+  } catch (dbErr) {
+    console.error('DB save failed:', dbErr);
+    return res.status(500).json({ error: 'Failed to persist summary' });
   }
 });
 
