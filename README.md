@@ -83,8 +83,13 @@ npm run dev
 
 Fill in GROQ_API_KEY and DATABASE_URL in .env before running.
 
+## Testing
+
+15 tests covering input validation, LLM response parsing (including malformed/truncated JSON), and embedding generation. Uses Node's built-in test runner, no extra dependencies.
+
+npm test
+
 ## What's not done yet
 
-- Automated tests (planned: Node's built-in node --test)
-- CI pipeline (GitHub Actions)
+- CI pipeline (GitHub Actions) to run tests automatically on push
 - Backfilling embeddings for summaries saved before the embedding column existed
