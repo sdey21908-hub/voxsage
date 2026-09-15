@@ -1,20 +1,16 @@
 import { Router } from 'express';
 import { summarizeTranscript } from '../services/llmService.js';
 import { saveSummary, searchSimilarSummaries } from '../services/db.js';
+import { validateTranscriptText } from '../utils/validation.js';
 
 const router = Router();
 
-// POST /api/transcripts/summarize
-// Body: { "text": "the raw transcript..." }
 router.post('/summarize', async (req, res) => {
   const { text } = req.body;
 
-  if (!text || typeof text !== 'string' || text.trim().length === 0) {
-    return res.status(400).json({ error: 'Missing or invalid "text" field' });
-  }
-
-  if (text.length > 20000) {
-    return res.status(400).json({ error: 'Transcript too long (max 20000 chars)' });
+  const validationError = validateTranscriptText(text);
+  if (validationError) {
+    return res.status(400).json({ error: validationError });
   }
 
   let result;
@@ -44,7 +40,6 @@ router.post('/summarize', async (req, res) => {
   }
 });
 
-// GET /api/transcripts/search?q=some search phrase
 router.get('/search', async (req, res) => {
   const { q } = req.query;
 

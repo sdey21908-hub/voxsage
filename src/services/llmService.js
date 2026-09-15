@@ -5,6 +5,20 @@ const client = new OpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
 });
 
+export function parseLLMResponse(raw) {
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (parseErr) {
+    throw new Error('LLM_INVALID_RESPONSE');
+  }
+
+  return {
+    summary: parsed.summary,
+    actionItems: parsed.action_items,
+  };
+}
+
 export async function summarizeTranscript(transcriptText) {
   const start = Date.now();
 
@@ -14,8 +28,7 @@ export async function summarizeTranscript(transcriptText) {
       messages: [
         {
           role: 'system',
-          content:
-            'You summarize customer call/chat transcripts. Respond ONLY with valid JSON in this exact shape: {"summary": string, "action_items": string[]}. No markdown, no preamble.',
+          content: 'You summarize customer call/chat transcripts. Respond ONLY with valid JSON in this exact shape: {"summary": string, "action_items": string[]}. No markdown, no preamble.',
         },
         {
           role: 'user',
@@ -30,15 +43,15 @@ export async function summarizeTranscript(transcriptText) {
 
     let parsed;
     try {
-      parsed = JSON.parse(raw);
-    } catch (parseErr) {
+      parsed = parseLLMResponse(raw);
+    } catch (err) {
       console.error('LLM returned non-JSON output:', raw);
-      throw new Error('LLM_INVALID_RESPONSE');
+      throw err;
     }
 
     return {
       summary: parsed.summary,
-      actionItems: parsed.action_items,
+      actionItems: parsed.actionItems,
       meta: {
         durationMs,
         model: 'openai/gpt-oss-20b',
@@ -46,7 +59,7 @@ export async function summarizeTranscript(transcriptText) {
     };
   } catch (err) {
     const durationMs = Date.now() - start;
-    console.error(`LLM call failed after ${durationMs}ms:`, err.message);
+    console.error('LLM call failed after ' + durationMs + 'ms:', err.message);
 
     if (err.message === 'LLM_INVALID_RESPONSE') {
       throw err;
