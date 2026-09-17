@@ -1,5 +1,7 @@
 # VoxSage — AI Call/Chat Transcript Summarizer
 
+![CI](https://github.com/sdey21908-hub/voxsage/actions/workflows/ci.yml/badge.svg)
+
 A production-minded Node.js backend that summarizes customer call/chat transcripts using an LLM, extracts action items, persists results to Postgres, and supports semantic search over past summaries using vector embeddings.
 
 **Live API:** https://voxsage-ozap.onrender.com
