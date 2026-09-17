@@ -91,7 +91,8 @@ Fill in GROQ_API_KEY and DATABASE_URL in .env before running.
 
 npm test
 
+CI (GitHub Actions) runs this automatically on every push to main.
+
 ## What's not done yet
 
-- CI pipeline (GitHub Actions) to run tests automatically on push
 - Backfilling embeddings for summaries saved before the embedding column existed
