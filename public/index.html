@@ -1,92 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>VoxSage - AI Call Summarizer</title>
-  <style>
-    body {
-      font-family: -apple-system, sans-serif;
-      max-width: 700px;
-      margin: 40px auto;
-      padding: 0 20px;
-      background: #f7f7f8;
-      color: #1a1a1a;
-    }
-    h1 {
-      font-size: 24px;
-    }
-    textarea {
-      width: 100%;
-      height: 120px;
-      padding: 10px;
-      font-size: 14px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
-    button {
-      background: #2563eb;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      font-size: 14px;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-    button:disabled {
-      background: #9ca3af;
-      cursor: not-allowed;
-    }
-    .result {
-      background: white;
-      border-radius: 8px;
-      padding: 16px;
-      margin-top: 20px;
-      border: 1px solid #e5e7eb;
-    }
-    .search-section {
-      margin-top: 50px;
-      border-top: 1px solid #e5e7eb;
-      padding-top: 30px;
-    }
-    input[type="text"] {
-      width: 70%;
-      padding: 10px;
-      font-size: 14px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
-    .hidden {
-      display: none;
-    }
-    .error {
-      color: #dc2626;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Voxsage — Call Transcript Intelligence</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎙️</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <h1>VoxSage</h1>
-  <p>Paste a call/chat transcript below to get an AI-generated summary and action items.</p>
 
-  <textarea id="transcriptInput" placeholder="Paste transcript here..."></textarea>
-  <br>
-  <button id="summarizeBtn">Summarize</button>
+<div class="app-shell">
 
-  <div id="summaryResult" class="result hidden"></div>
-  <div id="summaryError" class="error hidden"></div>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Voxsage</span>
+    </div>
+    <p class="brand-tag">Turns raw call and chat transcripts into summaries, action items, and a searchable record.</p>
+    <div class="conn-status" id="connStatus">
+      <span class="dot" id="connDot"></span>
+      <span id="connLabel">Checking API…</span>
+    </div>
+  </header>
 
-  <div class="search-section">
-    <h2>Search Past Summaries</h2>
-    <p>Search by meaning, not just exact words.</p>
-    <input type="text" id="searchInput" placeholder="e.g. billing issue double charge">
-    <button id="searchBtn">Search</button>
+  <nav class="tabs" role="tablist" aria-label="Workspace sections">
+    <button class="tab" role="tab" id="tab-summarize" aria-controls="panel-summarize" aria-selected="true">Summarize</button>
+    <button class="tab" role="tab" id="tab-search" aria-controls="panel-search" aria-selected="false">Search</button>
+    <button class="tab" role="tab" id="tab-dashboard" aria-controls="panel-dashboard" aria-selected="false">Dashboard</button>
+  </nav>
 
-    <div id="searchResults"></div>
-    <div id="searchError" class="error hidden"></div>
-  </div>
+  <main class="workspace">
 
-  <script src="app.js"></script>
+    <!-- SUMMARIZE -->
+    <section class="panel" id="panel-summarize" role="tabpanel" aria-labelledby="tab-summarize">
+      <div class="split">
+        <div class="split-col">
+          <label class="field-label" for="transcriptInput">Transcript</label>
+          <textarea id="transcriptInput" class="transcript-box" placeholder="Paste a customer call or chat transcript here…" spellcheck="false"></textarea>
+          <div class="row-between">
+            <span class="hint" id="charCount">0 characters</span>
+            <button class="btn btn-primary" id="summarizeBtn">Summarize</button>
+          </div>
+        </div>
+
+        <div class="split-col">
+          <div class="result-head">
+            <span class="field-label">Result</span>
+            <span class="pill" id="resultTiming" hidden></span>
+          </div>
+
+          <div class="result-body" id="resultBody">
+            <div class="empty-state">
+              <p>Nothing summarized yet.</p>
+              <p class="empty-sub">Paste a transcript on the left and run it — the summary and action items will land here.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEARCH -->
+    <section class="panel" id="panel-search" role="tabpanel" aria-labelledby="tab-search" hidden>
+      <div class="search-bar">
+        <input type="text" id="searchInput" class="search-input" placeholder="Search past summaries — e.g. “billing complaint”, “refund requested”…" />
+        <button class="btn btn-primary" id="searchBtn">Search</button>
+      </div>
+      <div class="search-results" id="searchResults">
+        <div class="empty-state">
+          <p>No search run yet.</p>
+          <p class="empty-sub">Results are ranked by semantic similarity, closest matches first.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- DASHBOARD -->
+    <section class="panel" id="panel-dashboard" role="tabpanel" aria-labelledby="tab-dashboard" hidden>
+      <div class="stat-row">
+        <div class="stat-hero">
+          <span class="stat-hero-num" id="statTotal">0</span>
+          <span class="stat-hero-label">summaries this session</span>
+        </div>
+        <div class="stat-mini">
+          <span class="stat-mini-num" id="statActionItems">0</span>
+          <span class="stat-mini-label">action items extracted</span>
+        </div>
+        <div class="stat-mini">
+          <span class="stat-mini-num" id="statAvgWords">0</span>
+          <span class="stat-mini-label">avg. transcript length (words)</span>
+        </div>
+      </div>
+
+      <div class="log-head">
+        <span class="field-label">Recent activity</span>
+        <button class="btn btn-ghost" id="clearHistoryBtn">Clear</button>
+      </div>
+      <ol class="log-list" id="historyList">
+        <li class="empty-state">
+          <p>No activity yet.</p>
+          <p class="empty-sub">Summaries you run will be logged here, most recent first.</p>
+        </li>
+      </ol>
+    </section>
+
+  </main>
+
+  <footer class="foot">
+    <span>voxsage · Node.js + Express · Groq · Supabase pgvector</span>
+  </footer>
+
+</div>
+
+<script src="app.js"></script>
 </body>
 </html>
