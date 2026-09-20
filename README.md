@@ -96,3 +96,35 @@ CI (GitHub Actions) runs this automatically on every push to main.
 ## What's not done yet
 
 - Backfilling embeddings for summaries saved before the embedding column existed
+
+## LangChain / LangGraph integration
+
+In addition to the original hand-built pipeline above, the project includes a parallel implementation using LangChain.js and LangGraph.js — built to compare a framework-based approach against the original from-scratch implementation, and to demonstrate agentic workflows (a self-verifying summarizer loop).
+
+### What was added
+
+- **`src/langchain/langchain-embeddings.js`** — local embeddings via LangChain's `HuggingFaceTransformersEmbeddings` wrapper (same model, `Xenova/all-MiniLM-L6-v2`)
+- **`src/langchain/langchain-vectorstore.js`** — Supabase/pgvector read and write, using a custom `match_documents` SQL function mapped to the existing `summaries` table schema
+- **`src/langchain/langchain-llm-chain.js`** — Groq via `ChatGroq`, with structured output enforced using `.withStructuredOutput()` and a Zod schema
+- **`src/langchain/langchain-rag-chain.js`** — the full retrieve-then-generate RAG chain powering semantic search
+- **`src/langchain/langgraph-verifier-agent.js`** — a two-agent LangGraph workflow: one agent summarizes, a second agent fact-checks the summary against the original transcript and triggers a retry (capped at 3 attempts) if it finds unsupported claims
+
+### New endpoints
+
+- `POST /api/langchain/summarize` — summarize + store, using the LangChain pipeline
+- `POST /api/langchain/search` — semantic search over past summaries (RAG)
+- `POST /api/langchain/summarize/verified` — the LangGraph self-verifying summarizer loop
+
+### Debugging journey (real issues hit during this migration)
+
+This integration surfaced several real version-mismatch issues, resolved by reading installed package source directly rather than trusting documentation, which was frequently out of date relative to the installed versions:
+
+1. **`@langchain/community` sunset** — the package was recently deprecated by the LangChain team in favor of standalone integration packages; existing integrations (Supabase, HuggingFace embeddings) still work but the import path had moved from the documented `embeddings/hf_transformers` to the actual `embeddings/huggingface_transformers`, and the underlying dependency changed from `@xenova/transformers` to `@huggingface/transformers`.
+2. **`OutputFixingParser` removed in LangChain v1** — the parse-then-fix pattern for structured output was dropped in favor of native tool-calling via `.withStructuredOutput()`, which is what's used here instead.
+3. **`StateGraph` channel definition changed** — LangGraph's channel shape moved away from `{ value: null }` wrapper objects to plain `null` for a default overwrite channel.
+4. **Schema mismatch** — the generic LangChain Supabase examples assume `content`/`metadata` columns; this project's actual `summaries` table uses `transcript_text`/`summary`/`action_items`/`embedding`, so the vector store logic was written directly against Supabase's client rather than LangChain's generic `SupabaseVectorStore` wrapper.
+5. **ESM vs CommonJS** — the project uses ES modules (`"type": "module"`), so all new files use `import`/`export`, not `require`.
+6. **Deploy-time dependency resolution** — Render's default `npm install` doesn't use `--legacy-peer-deps`, which is needed here due to a peer dependency conflict between LangChain packages; fixed with an `.npmrc` file (`legacy-peer-deps=true`) so the same resolution applies consistently in every environment.
+7. **Hidden newline in a copied secret** — a production 500 error traced back to a literal newline character embedded in a copy-pasted Supabase API key, which broke it as an HTTP header value. Root-caused by reading the raw error stack trace rather than assuming the key was simply wrong.
+
+Every fix above was verified with an isolated test script (embeddings, vector store, LLM chain, RAG chain, and the verifier agent each tested independently) before being wired into the actual Express routes, then confirmed working against the live production deployment.
