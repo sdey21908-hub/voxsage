@@ -4,6 +4,7 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import transcriptsRouter from './routes/transcripts.js';
+import langchainRouter from './routes/langchain.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,6 +32,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/transcripts', transcriptsRouter);
+app.use('/api/langchain', langchainRouter);
 
 const PORT = process.env.PORT || 3000;
 
