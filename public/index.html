@@ -20,10 +20,11 @@
       <span class="brand-name">Voxsage</span>
     </div>
     <p class="brand-tag">Turns raw call and chat transcripts into summaries, action items, and a searchable record.</p>
-    <div class="conn-status" id="connStatus">
+        <div class="conn-status" id="connStatus">
       <span class="dot" id="connDot"></span>
       <span id="connLabel">Checking API…</span>
     </div>
+    <button type="button" id="logoutBtn" onclick="logout()">Log out</button>
   </header>
 
   <nav class="tabs" role="tablist" aria-label="Workspace sections">
@@ -81,7 +82,7 @@
       <div class="stat-row">
         <div class="stat-hero">
           <span class="stat-hero-num" id="statTotal">0</span>
-          <span class="stat-hero-label">summaries this session</span>
+          <span class="stat-hero-label">summaries</span>
         </div>
         <div class="stat-mini">
           <span class="stat-mini-num" id="statActionItems">0</span>
@@ -95,7 +96,7 @@
 
       <div class="log-head">
         <span class="field-label">Recent activity</span>
-        <button class="btn btn-ghost" id="clearHistoryBtn">Clear</button>
+        <button class="btn btn-ghost" id="clearHistoryBtn" style="display:none">Clear</button>
       </div>
       <ol class="log-list" id="historyList">
         <li class="empty-state">
@@ -113,6 +114,9 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="auth.js"></script>
+<script>requireRole('user');</script>
 <script src="app.js"></script>
 </body>
 </html>

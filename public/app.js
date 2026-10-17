@@ -127,7 +127,7 @@ summarizeBtn.addEventListener("click", async () => {
 
   const startedAt = performance.now();
   try {
-    const res = await fetch("/api/transcripts/summarize", {
+    const res = await authFetch("/api/transcripts/summarize", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: text }),
@@ -187,7 +187,7 @@ async function runSearch() {
   renderLoading(searchResults, "Searching past summaries…");
 
   try {
-    const res = await fetch(`/api/transcripts/search?q=${encodeURIComponent(q)}`);
+    const res = await authFetch(`/api/transcripts/search?q=${encodeURIComponent(q)}`);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error || body.message || `Request failed (${res.status})`);
@@ -274,16 +274,22 @@ const statAvgWords = document.getElementById("statAvgWords");
 const historyList = document.getElementById("historyList");
 const clearHistoryBtn = document.getElementById("clearHistoryBtn");
 
-function renderDashboard() {
-  const entries = loadHistory();
+async function renderDashboard() {
+  let data;
+  try {
+    const res = await authFetch("/stats");
+    if (!res.ok) throw new Error("stats " + res.status);
+    data = await res.json();
+  } catch (err) {
+    console.error(err);
+    return;
+  }
 
-  statTotal.textContent = entries.length;
-  statActionItems.textContent = entries.reduce((sum, e) => sum + (e.actionItemsCount || 0), 0);
-  statAvgWords.textContent = entries.length
-    ? Math.round(entries.reduce((sum, e) => sum + (e.wordCount || 0), 0) / entries.length)
-    : 0;
+  statTotal.textContent = data.summaries;
+  statActionItems.textContent = data.actionItems;
+  statAvgWords.textContent = data.avgWords;
 
-  if (!entries.length) {
+  if (!data.recent.length) {
     historyList.innerHTML = `
       <li class="empty-state">
         <p>No activity yet.</p>
@@ -292,15 +298,16 @@ function renderDashboard() {
     return;
   }
 
-  historyList.innerHTML = entries
-    .map(
-      (e) => `
+  historyList.innerHTML = data.recent
+    .map((e) => {
+      const n = e.action_items || 0;
+      return `
       <li>
-        <span class="log-time">${escapeHtml(relativeTime(e.time))}</span>
-        <span class="log-summary">${escapeHtml(e.summary || "(empty summary)")}</span>
-        <span class="log-count">${e.actionItemsCount || 0} action item${e.actionItemsCount === 1 ? "" : "s"}</span>
-      </li>`
-    )
+        <span class="log-time">${escapeHtml(relativeTime(new Date(e.created_at).getTime()))}</span>
+        <span class="log-summary">${escapeHtml(e.preview || "(empty summary)")}</span>
+        <span class="log-count">${n} action item${n === 1 ? "" : "s"}</span>
+      </li>`;
+    })
     .join("");
 }
 

@@ -1,0 +1,30 @@
+:root{--bg:#f6f4ef;--ink:#12161d;--mute:#6b6f76;--line:#dedbd3;--teal:#2d5a56;--on:#fff;--card:#fff;--err:#a63d2f}
+@media(prefers-color-scheme:dark){:root{--bg:#14171c;--ink:#ecebe6;--mute:#9a9ea5;--line:#2b2f36;--teal:#7fb5ae;--on:#10201e;--card:#1b1f26;--err:#e08b7e}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Figtree",system-ui,sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:28px 20px}
+.narrow{max-width:420px;padding-top:12vh}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:28px}
+h1{font-size:26px;margin:0}h2{font-size:17px;margin:32px 0 10px}
+.mark{display:inline-block;width:14px;height:26px;background:var(--teal);border-radius:3px;transform:skewX(-8deg);margin-right:10px;vertical-align:-4px}
+.mute{color:var(--mute)}
+button,input{font:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:8px}
+button.primary{background:var(--teal);color:var(--on);border-color:var(--teal);width:100%;padding:10px}
+button:disabled{opacity:.6;cursor:wait}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+label{display:block;margin:14px 0}
+input{display:block;width:100%;margin-top:4px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.tabs{display:flex;gap:8px;margin:20px 0 4px}.tabs button.on{border-color:var(--teal);color:var(--teal);font-weight:600}
+#msg{min-height:1.5em;color:var(--err)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.stat b{display:block;font-size:34px;line-height:1.1}.stat span{color:var(--mute);font-size:14px}
+.stat.lead{background:var(--ink);color:var(--bg);border-color:var(--ink)}.stat.lead span{color:inherit;opacity:.75}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mute);font-weight:500}
+td.num,th.num{text-align:right}
+td button{padding:2px 8px;font-size:14px}
+.when{font-family:ui-monospace,monospace;font-size:13px;color:var(--mute)}

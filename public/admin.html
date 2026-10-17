@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Voxsage: Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head><body>
+<main class="wrap">
+  <header>
+    <h1><span class="mark"></span>Voxsage admin</h1>
+    <div><span id="who" class="mute"></span> <button onclick="logout()">Log out</button></div>
+  </header>
+
+  <section class="stats" id="cards"></section>
+
+  <h2>Users</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Email</th><th>Joined</th><th>Last active</th><th class="num">Summaries</th><th class="num">Searches</th><th></th></tr></thead>
+    <tbody id="users"></tbody>
+  </table></div>
+
+  <h2 id="actTitle">Recent activity</h2>
+  <p class="mute">Shows who did what and when. Transcripts and summaries are never shown here.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>When</th><th>User</th><th>Action</th><th class="num">Action items</th></tr></thead>
+    <tbody id="acts"></tbody>
+  </table></div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="auth.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = (d) => d ? new Date(d).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Never';
+let filter = null;
+
+async function loadActivity() {
+  const rows = await (await authFetch('/admin/activity' + (filter ? '?user=' + filter.id : ''))).json();
+  $('actTitle').innerHTML = filter
+    ? 'Activity for ' + esc(filter.email) + ' <button id="clr">Show everyone</button>' : 'Recent activity';
+  if (filter) $('clr').onclick = () => { filter = null; loadActivity(); };
+  $('acts').innerHTML = rows.length ? rows.map((r) =>
+    `<tr><td class="when">${fmt(r.created_at)}</td><td>${esc(r.profiles?.email)}</td><td>${esc(r.action)}</td><td class="num">${r.action_items ?? ''}</td></tr>`
+  ).join('') : '<tr><td colspan="4" class="mute">No activity yet.</td></tr>';
+}
+
+async function load() {
+  const me = await requireRole('admin');
+  $('who').textContent = me.email;
+  const [o, users] = await Promise.all([
+    authFetch('/admin/overview').then((r) => r.json()),
+    authFetch('/admin/users').then((r) => r.json()),
+  ]);
+  const cards = [['Total users', o.users, 1], ['New this week', o.newUsers], ['Active in 24h', o.active24h],
+    ['Active in 7 days', o.active7d], ['Summaries', o.summaries], ['Action items', o.actionItems]];
+  $('cards').innerHTML = cards.map(([l, v, lead]) => `<div class="stat${lead ? ' lead' : ''}"><b>${v ?? 0}</b><span>${l}</span></div>`).join('');
+  $('users').innerHTML = users.map((u) =>
+    `<tr><td>${esc(u.email)}${u.role === 'admin' ? ' <span class="mute">(admin)</span>' : ''}</td>
+     <td class="when">${fmt(u.created_at)}</td><td class="when">${fmt(u.lastActive)}</td>
+     <td class="num">${u.summaries}</td><td class="num">${u.searches}</td>
+     <td><button data-id="${esc(u.id)}" data-email="${esc(u.email)}">View activity</button></td></tr>`).join('');
+  $('users').onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    filter = { id: b.dataset.id, email: b.dataset.email }; loadActivity();
+  };
+  loadActivity();
+}
+load();
+</script>
+</body></html>

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Voxsage: Log in</title>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head><body>
+<main class="wrap narrow">
+  <h1><span class="mark"></span>Voxsage</h1>
+  <p class="mute">Log in to see your summaries and dashboard.</p>
+  <div class="tabs">
+    <button id="tLogin" class="on" type="button">Log in</button>
+    <button id="tSignup" type="button">Create account</button>
+  </div>
+  <label>Email<input id="email" type="email" autocomplete="email"></label>
+  <label>Password (6+ characters)<input id="pw" type="password" autocomplete="current-password" minlength="6"></label>
+  <button id="go" class="primary" type="button">Log in</button>
+  <p id="msg" role="alert"></p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="auth.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+let mode = 'login';
+function setMode(m) {
+  mode = m;
+  $('go').textContent = m === 'login' ? 'Log in' : 'Create account';
+  $('tLogin').classList.toggle('on', m === 'login');
+  $('tSignup').classList.toggle('on', m === 'signup');
+  $('pw').autocomplete = m === 'login' ? 'current-password' : 'new-password';
+  $('msg').textContent = '';
+}
+$('tLogin').onclick = () => setMode('login');
+$('tSignup').onclick = () => setMode('signup');
+
+async function route() {
+  const me = await (await authFetch('/me')).json();
+  await authFetch('/activity/login', { method: 'POST' });
+  location.href = me.role === 'admin' ? '/admin.html' : '/';
+}
+$('go').onclick = async () => {
+  const c = await getClient();
+  const email = $('email').value.trim(), password = $('pw').value;
+  $('msg').textContent = ''; $('go').disabled = true;
+  const { data, error } = mode === 'login'
+    ? await c.auth.signInWithPassword({ email, password })
+    : await c.auth.signUp({ email, password });
+  $('go').disabled = false;
+  if (error) { $('msg').textContent = error.message; return; }
+  if (!data.session) { $('msg').textContent = 'Check your email to confirm your account, then log in.'; return; }
+  route();
+};
+getClient().then((c) => c.auth.getSession()).then(({ data }) => { if (data.session) route(); });
+</script>
+</body></html>

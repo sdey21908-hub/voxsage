@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { summarizeTranscript } from '../services/llmService.js';
 import { saveSummary, searchSimilarSummaries } from '../services/db.js';
 import { validateTranscriptText } from '../utils/validation.js';
+import { logActivity } from '../authRoutes.js';
 
 const router = Router();
 
@@ -28,7 +29,13 @@ router.post('/summarize', async (req, res) => {
       transcriptText: text,
       summary: result.summary,
       actionItems: result.actionItems,
+      userId: req.user.id,
     });
+    logActivity(req.user.id, 'summarize', {
+      actionItems: Array.isArray(result.actionItems) ? result.actionItems.length : 0,
+      words: text.trim().split(/\s+/).length,
+      preview: String(result.summary || '').slice(0, 140),
+    }).catch(console.error);
     return res.status(200).json({
       id: saved.id,
       createdAt: saved.created_at,
@@ -48,7 +55,8 @@ router.get('/search', async (req, res) => {
   }
 
   try {
-    const results = await searchSimilarSummaries(q, 5);
+    const results = await searchSimilarSummaries(q, 5, req.user.id);
+    logActivity(req.user.id, 'search').catch(console.error);
     return res.status(200).json({ query: q, results });
   } catch (err) {
     console.error('Search failed:', err);

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import transcriptsRouter from './routes/transcripts.js';
 import langchainRouter from './routes/langchain.js';
-
+import { router as authRouter, requireAuth } from './authRoutes.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -30,9 +30,10 @@ app.use((req, res, next) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-
+app.use(authRouter);
+app.use('/api', requireAuth);
 app.use('/api/transcripts', transcriptsRouter);
-app.use('/api/langchain', langchainRouter);
+//app.use('/api/langchain', langchainRouter);
 
 const PORT = process.env.PORT || 3000;
 
