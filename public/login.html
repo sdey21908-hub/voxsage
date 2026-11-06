@@ -15,6 +15,8 @@
   <label>Email<input id="email" type="email" autocomplete="email"></label>
   <label>Password (6+ characters)<input id="pw" type="password" autocomplete="current-password" minlength="6"></label>
   <button id="go" class="primary" type="button">Log in</button>
+  <p class="mute" style="text-align:center;margin:12px 0">or</p>
+  <button id="demo" type="button">Try Demo (no signup)</button>
   <p id="msg" role="alert"></p>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
@@ -38,6 +40,7 @@ async function route() {
   await authFetch('/activity/login', { method: 'POST' });
   location.href = me.role === 'admin' ? '/admin.html' : '/';
 }
+
 $('go').onclick = async () => {
   const c = await getClient();
   const email = $('email').value.trim(), password = $('pw').value;
@@ -48,8 +51,31 @@ $('go').onclick = async () => {
   $('go').disabled = false;
   if (error) { $('msg').textContent = error.message; return; }
   if (!data.session) { $('msg').textContent = 'Check your email to confirm your account, then log in.'; return; }
-  route();
+  await route();
 };
-getClient().then((c) => c.auth.getSession()).then(({ data }) => { if (data.session) route(); });
+
+$('demo').onclick = async () => {
+  $('msg').textContent = '';
+  $('demo').disabled = true;
+  $('demo').textContent = 'Starting demo...';
+  try {
+    const res = await fetch('/demo', { method: 'POST' });
+    const creds = await res.json();
+    if (!res.ok) throw new Error(creds.error || 'Could not start demo session');
+
+    const c = await getClient();
+    const { error } = await c.auth.signInWithPassword({
+      email: creds.email,
+      password: creds.password,
+    });
+    if (error) throw error;
+
+    await route();
+  } catch (err) {
+    $('msg').textContent = err.message;
+    $('demo').disabled = false;
+    $('demo').textContent = 'Try Demo (no signup)';
+  }
+};
 </script>
 </body></html>

@@ -2,11 +2,12 @@ import { Router } from 'express';
 import { summarizeTranscript } from '../services/llmService.js';
 import { saveSummary, searchSimilarSummaries } from '../services/db.js';
 import { validateTranscriptText } from '../utils/validation.js';
-import { logActivity } from '../authRoutes.js';
+import { logActivity, guestLimit } from '../authRoutes.js';
 
 const router = Router();
 
-router.post('/summarize', async (req, res) => {
+// guestLimit halts execution if an ephemeral demo user has hit 5 summaries
+router.post('/summarize', guestLimit, async (req, res) => {
   const { text } = req.body;
 
   const validationError = validateTranscriptText(text);

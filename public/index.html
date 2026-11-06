@@ -9,10 +9,64 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css" />
+<style>
+  /* Demo banner and quick-actions styling */
+  .demo-banner {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    color: #3730a3;
+    padding: 10px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 0.875rem;
+  }
+  .demo-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .demo-badge {
+    background: #4f46e5;
+    color: #ffffff;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .btn-sample {
+    background: transparent;
+    border: 1px dashed #94a3b8;
+    color: #475569;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-sample:hover {
+    border-color: #4f46e5;
+    color: #4f46e5;
+    background: #f8fafc;
+  }
+</style>
 </head>
 <body>
 
 <div class="app-shell">
+
+  <!-- GUEST DEMO BANNER -->
+  <aside id="demoBanner" class="demo-banner" role="status" aria-live="polite">
+    <div class="demo-banner-content">
+      <span class="demo-badge">Recruiter Demo</span>
+      <span>You are using a temporary guest session. Capped at <strong>5 summaries</strong>.</span>
+    </div>
+    <a href="/login.html" style="color: #4f46e5; font-weight: 600; text-decoration: underline; font-size: 0.82rem;">Create full account</a>
+  </aside>
 
   <header class="topbar">
     <div class="brand">
@@ -20,7 +74,7 @@
       <span class="brand-name">Voxsage</span>
     </div>
     <p class="brand-tag">Turns raw call and chat transcripts into summaries, action items, and a searchable record.</p>
-        <div class="conn-status" id="connStatus">
+    <div class="conn-status" id="connStatus">
       <span class="dot" id="connDot"></span>
       <span id="connLabel">Checking API…</span>
     </div>
@@ -39,8 +93,11 @@
     <section class="panel" id="panel-summarize" role="tabpanel" aria-labelledby="tab-summarize">
       <div class="split">
         <div class="split-col">
-          <label class="field-label" for="transcriptInput">Transcript</label>
-          <textarea id="transcriptInput" class="transcript-box" placeholder="Paste a customer call or chat transcript here…" spellcheck="false"></textarea>
+          <div class="row-between" style="margin-bottom: 6px;">
+            <label class="field-label" for="transcriptInput" style="margin: 0;">Transcript</label>
+            <button type="button" class="btn-sample" id="loadSampleBtn">⚡ Load Sample Transcript</button>
+          </div>
+          <textarea id="transcriptInput" class="transcript-box" placeholder="Paste a customer call or chat transcript here, or click 'Load Sample Transcript' above…" spellcheck="false"></textarea>
           <div class="row-between">
             <span class="hint" id="charCount">0 characters</span>
             <button class="btn btn-primary" id="summarizeBtn">Summarize</button>
@@ -118,5 +175,45 @@
 <script src="auth.js"></script>
 <script>requireRole('user');</script>
 <script src="app.js"></script>
+
+<script>
+// Check guest status & mount demo ergonomics
+(async function initDemoFeatures() {
+  try {
+    const res = await authFetch('/me');
+    if (!res.ok) return;
+    const user = await res.json();
+    
+    if (user.isGuest) {
+      const banner = document.getElementById('demoBanner');
+      if (banner) banner.style.display = 'flex';
+    }
+  } catch (err) {
+    console.warn('Could not verify guest profile:', err);
+  }
+
+  // Quick sample loader for recruiters
+  const sampleBtn = document.getElementById('loadSampleBtn');
+  const input = document.getElementById('transcriptInput');
+  const charCount = document.getElementById('charCount');
+
+  if (sampleBtn && input) {
+    sampleBtn.addEventListener('click', () => {
+      input.value = `Agent (Marcus): Thank you for calling CloudScale Support, my name is Marcus. Who do I have the pleasure of speaking with?
+Customer (Sarah): Hi Marcus, this is Sarah Connor from Cyberdyne Systems. We're seeing intermittent 504 gateway timeouts on our production US-East cluster since 09:00 UTC.
+Agent (Marcus): I'm sorry to hear that, Sarah. Let me check the cluster health metrics on our backend right now. Are your workers dropping connections or is the load balancer failing health checks?
+Customer (Sarah): The ALB target groups are showing healthy, but response latencies spike over 8 seconds whenever the ingestion queue crosses 20k messages.
+Agent (Marcus): Understood. I see a throttled database read-replica in your cluster region. I will escalate this ticket to our tier-2 infrastructure engineers right away to increase replica provisioning. 
+Customer (Sarah): Thank you. Can you also send an email confirmation of the escalation to devops@cyberdyne.io?
+Agent (Marcus): Absolutely. I will create incident INC-84920, tag your email, and post status updates within the next 30 minutes.`;
+      
+      if (charCount) {
+        charCount.textContent = `${input.value.length} characters`;
+      }
+      input.focus();
+    });
+  }
+})();
+</script>
 </body>
 </html>

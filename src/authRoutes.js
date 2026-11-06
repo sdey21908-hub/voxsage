@@ -1,5 +1,7 @@
 // Mount in server.js: import { router as authRouter } from './authRoutes.js'; app.use(authRouter);
 import express from 'express';
+import crypto from 'crypto';
+import rateLimit from 'express-rate-limit';
 import { createClient } from '@supabase/supabase-js';
 
 const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
@@ -28,13 +30,85 @@ async function logActivity(userId, action, { actionItems = null, words = null, p
   });
 }
 
-// Public: frontend needs these two values (the anon key is safe to expose)
+// ---- demo guests: usage cap ----
+const GUEST_MAX_SUMMARIES = 5;
+
+async function guestLimit(req, res, next) {
+  try {
+    const { data: prof } = await sb.from('profiles')
+      .select('is_guest').eq('id', req.user.id).single();
+    
+    // Non-guest users have no cap
+    if (!prof?.is_guest) return next();
+
+    const { count, error } = await sb.from('activity_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', req.user.id)
+      .eq('action', 'summarize');
+
+    if (error) return next();
+
+    if ((count || 0) >= GUEST_MAX_SUMMARIES) {
+      return res.status(403).json({
+        error: `Demo limit reached (${GUEST_MAX_SUMMARIES} summaries). Create a free account to continue.`,
+      });
+    }
+
+    next();
+  } catch (err) {
+    next();
+  }
+}
+
+// Rate limit demo account generation to 10 per hour per IP
+const demoLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many demo accounts created from this IP. Try again in an hour.' },
+});
+
+// Ephemeral guest creation endpoint
+router.post('/demo', demoLimiter, async (req, res) => {
+  try {
+    const id = crypto.randomBytes(4).toString('hex');
+    const email = `guest_${id}@demo.voxsage.local`;
+    const password = crypto.randomBytes(16).toString('hex');
+
+    const { data, error } = await sb.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+    if (error) return res.status(500).json({ error: error.message });
+
+    await sb.from('profiles').upsert({
+      id: data.user.id,
+      email,
+      role: 'user',
+      is_guest: true,
+    });
+
+    await logActivity(data.user.id, 'login');
+    res.json({ email, password });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create demo session' });
+  }
+});
+
+// Public: frontend needs these two values (anon key is safe to expose)
 router.get('/config', (req, res) =>
   res.json({ url: process.env.SUPABASE_URL, anonKey: process.env.SUPABASE_ANON_KEY }));
 
 router.get('/me', requireAuth, async (req, res) => {
-  const { data } = await sb.from('profiles').select('role').eq('id', req.user.id).single();
-  res.json({ id: req.user.id, email: req.user.email, role: data?.role || 'user' });
+  const { data } = await sb.from('profiles').select('role,is_guest').eq('id', req.user.id).single();
+  res.json({
+    id: req.user.id,
+    email: req.user.email,
+    role: data?.role || 'user',
+    isGuest: !!data?.is_guest,
+  });
 });
 
 router.post('/activity/login', requireAuth, async (req, res) => {
@@ -59,7 +133,6 @@ router.get('/stats', requireAuth, async (req, res) => {
 });
 
 // ---- admin: metadata only, no transcripts or previews ----
-// Fine for a demo; move to SQL views once activity_log passes ~1000 rows.
 router.get('/admin/overview', requireAuth, requireAdmin, async (req, res) => {
   const week = new Date(Date.now() - 7 * 864e5).toISOString();
   const [{ count: users }, { count: newUsers }, { data: a }] = await Promise.all([
@@ -103,4 +176,4 @@ router.get('/admin/activity', requireAuth, requireAdmin, async (req, res) => {
   res.json(data);
 });
 
-export { router, requireAuth, requireAdmin, logActivity };
+export { router, requireAuth, requireAdmin, logActivity, guestLimit };
